@@ -143,4 +143,13 @@ export default class UsersController {
       })
     }
   }
+
+  public async img({ request, response }: HttpContextContract) {
+    const user = await User.findBy('id', request.params().id)
+    if (user) {
+      return response.download(Application.publicPath('uploads/avatars/') + user.avatar)
+    } else {
+      return response.status(404).json({ message: 'Image not found' })
+    }
+  }
 }

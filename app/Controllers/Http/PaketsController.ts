@@ -125,4 +125,12 @@ export default class PaketsController {
       })
     }
   }
+  public async img({ request, response }: HttpContextContract) {
+    const paket = await Paket.findBy('id', request.params().id)
+    if (paket) {
+      return response.download(Application.publicPath('uploads/paket/') + paket.gambar)
+    } else {
+      return response.status(404).json({ message: 'Image not found' })
+    }
+  }
 }
