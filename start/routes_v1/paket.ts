@@ -7,5 +7,5 @@ Route.group(() => {
   Route.get('/paket/:id', 'PaketsController.show').middleware('Auth')
   Route.put('/paket/:id', 'PaketsController.update')
   Route.delete('/paket/:id', 'PaketsController.destroy').middleware('Auth')
-  Route.get('/paket/img/:id', 'PaketsController.img').middleware('Auth')
+  Route.get('/paket/img/:id', 'PaketsController.img')
 }).prefix('api/v1')

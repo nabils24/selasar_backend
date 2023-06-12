@@ -7,5 +7,5 @@ Route.group(() => {
   Route.get('/users/:id', 'UsersController.show').middleware('Auth')
   Route.put('/users/:id', 'UsersController.update')
   Route.delete('/users/:id', 'UsersController.destroy').middleware('Auth')
-  Route.get('/users/img/:id', 'UsersController.img').middleware('Auth')
+  Route.get('/users/img/:id', 'UsersController.img')
 }).prefix('api/v1')

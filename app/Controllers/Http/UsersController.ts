@@ -42,15 +42,17 @@ export default class UsersController {
         name: `avatar_${new Date().getTime()}.${avt.extname}`,
         overwrite: true,
       })
+      user.avatar = avt.fileName
+    } else {
+      user.avatar = 'default.png'
     }
-    const fileName = avt.fileName
 
     user.username = request.input('username')
     user.email = request.input('email')
     user.password = await Hash.make(request.input('password'))
     user.role = request.input('role')
     user.status_user = request.input('status_user')
-    user.avatar = fileName
+    // user.avatar = fileName
     user.phone = request.input('phone')
     user.address = request.input('address')
     user.city = request.input('city')
