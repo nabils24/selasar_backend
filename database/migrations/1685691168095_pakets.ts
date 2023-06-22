@@ -15,6 +15,7 @@ export default class extends BaseSchema {
       table.integer('harga').notNullable()
       table.string('fasilitas').notNullable()
       table.string('jenis_paket').notNullable()
+      table.string('jenis').notNullable()
       table.string('kapasitas').notNullable()
       table.string('gambar').notNullable()
       table.enum('status_paket', ['active', 'inactive']).notNullable()

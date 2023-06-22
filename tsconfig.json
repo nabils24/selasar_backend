@@ -5,10 +5,10 @@
   ],
   "exclude": [
     "node_modules",
-    "build"
+    "build_v1"
   ],
   "compilerOptions": {
-    "outDir": "build",
+    "outDir": "build_v1",
     "rootDir": "./",
     "sourceMap": true,
     "paths": {

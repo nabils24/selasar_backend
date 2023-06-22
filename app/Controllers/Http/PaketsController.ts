@@ -18,6 +18,21 @@ export default class PaketsController {
     }
   }
 
+  public async getByJenis({ request, response }: HttpContextContract) {
+    const jenis = request.param('jenis')
+    const paket = await Paket.findBy('jenis', jenis)
+    if (!paket) {
+      return response.status(404).json({
+        message: 'failed',
+        data: null,
+      })
+    }
+    return response.status(200).json({
+      message: 'success',
+      data: paket,
+    })
+  }
+
   public async create({ request, response }: HttpContextContract) {
     const avt = request.file('gambar_paket', {
       // ukuran gambar
@@ -39,6 +54,7 @@ export default class PaketsController {
     paket.deskripsi = request.input('deskripsi')
     paket.harga = request.input('harga')
     paket.fasilitas = request.input('fasilitas')
+    paket.jenis = request.input('jenis')
     paket.jenis_paket = request.input('jenis_paket')
     paket.kapasitas = request.input('kapasitas')
     paket.gambar = fileName
@@ -91,6 +107,7 @@ export default class PaketsController {
       paket.deskripsi = request.input('deskripsi')
       paket.harga = request.input('harga')
       paket.fasilitas = request.input('fasilitas')
+      paket.jenis = request.input('jenis')
       paket.jenis_paket = request.input('jenis_paket')
       paket.kapasitas = request.input('kapasitas')
       paket.gambar = fileName

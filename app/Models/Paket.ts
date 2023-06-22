@@ -21,6 +21,9 @@ export default class Paket extends BaseModel {
   public jenis_paket: string
 
   @column()
+  public jenis: string
+
+  @column()
   public kapasitas: string
 
   @column()
