@@ -16,7 +16,7 @@ export default class BookingsController {
       .select('bookings.*', 'users.*', 'dtl_bookings.*', 'pakets.*')
 
     // make id, status, date, date1, date2 from value parameter
-    const { id, status, date, date1, date2 } = value
+    const { uid, id, status, date, date1, date2 } = value
 
     if (id) {
       booking = await Database.from('bookings')
@@ -39,6 +39,13 @@ export default class BookingsController {
         .innerJoin('pakets', 'dtl_bookings.paket_id', 'pakets.id')
         .select('bookings.*', 'users.*', 'dtl_bookings.*', 'pakets.*')
         .where('bookings.check_in', date)
+    } else if (uid) {
+      booking = await Database.from('bookings')
+        .innerJoin('dtl_bookings', 'bookings.id', 'dtl_bookings.booking_id')
+        .innerJoin('users', 'bookings.user_id', 'users.id')
+        .innerJoin('pakets', 'dtl_bookings.paket_id', 'pakets.id')
+        .select('bookings.*', 'users.*', 'dtl_bookings.*', 'pakets.*')
+        .where('bookings.user_id', uid)
     } else if (date1 && date2) {
       booking = await Database.from('bookings')
         .innerJoin('dtl_bookings', 'bookings.id', 'dtl_bookings.booking_id')
@@ -183,7 +190,11 @@ export default class BookingsController {
     // looping for get dtl_booking data
     dtl_booking.forEach(async (element: any) => {
       const checkPaket = await Paket.findBy('id', element.paket_id)
+      const checkUser = await User.findBy('id', parsedJson.user_id)
       const paketParsed = JSON.parse(JSON.stringify(checkPaket))
+      if (checkUser == null) {
+        return response.badRequest({ message: 'user tidak ditemukan' })
+      }
       if (checkPaket == null) {
         return response.badRequest({ message: 'paket tidak ditemukan' })
       } else {
@@ -216,20 +227,15 @@ export default class BookingsController {
         await dtlBooking.save()
       }
     })
-
-    let req = {
-      id: booking.kode_booking,
-      status: null,
-      date: null,
-      date1: null,
-      date2: null,
+    if (booking.$isPersisted) {
+      return response.created({ status: 'success', message: 'booking berhasil dibuat' })
     }
-    return await this.getBooking(req)
   }
 
   public async show({ request, response }: HttpContextContract) {
     let qs = JSON.parse(JSON.stringify(request.qs()))
     let req = {
+      uid: qs.uid,
       id: qs.id,
       status: qs.status,
       date: qs.date,
@@ -282,7 +288,11 @@ export default class BookingsController {
     // looping for get dtl_booking data
     dtl_booking.forEach(async (element: any) => {
       const checkPaket = await Paket.findBy('id', element.paket_id)
+      const checkUser = await User.findBy('id', parsedJson.user_id)
       const paketParsed = JSON.parse(JSON.stringify(checkPaket))
+      if (checkUser == null) {
+        return response.badRequest({ message: 'user tidak ditemukan' })
+      }
       if (checkPaket == null) {
         return response.badRequest({ message: 'paket tidak ditemukan' })
       } else {
@@ -310,14 +320,9 @@ export default class BookingsController {
         await dtlBooking.save()
       }
     })
-    let req = {
-      id: booking.kode_booking,
-      status: null,
-      date: null,
-      date1: null,
-      date2: null,
+    if (booking.$isPersisted) {
+      return response.created({ status: 'success', message: 'booking berhasil diupdate' })
     }
-    return await this.getBooking(req)
   }
 
   public async destroy({ request, response }: HttpContextContract) {

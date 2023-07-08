@@ -18,7 +18,18 @@ export default class extends BaseSchema {
       table.integer('durasi_menginap').unsigned().notNullable()
       table.integer('total_harga').unsigned().notNullable()
       table.enum('status_booking', ['active', 'inactive']).notNullable()
-      table.enum('status_pembayaran', ['active', 'inactive']).notNullable()
+      table
+        .enum('status_pembayaran', [
+          'active',
+          'inactive',
+          'pending',
+          'settlement',
+          'cancel',
+          'process',
+          'deny',
+          'refund',
+        ])
+        .notNullable()
       table.enum('status_check_in', ['active', 'inactive']).notNullable()
       table.enum('status_check_out', ['active', 'inactive']).notNullable()
       table.dateTime('created_at', { useTz: true })
