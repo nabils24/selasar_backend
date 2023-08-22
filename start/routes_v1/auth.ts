@@ -30,13 +30,13 @@ Route.group(() => {
   // ini buat logout token
   Route.post('/auth/logout', async ({ request, auth, response }: HttpContextContract) => {
     const { email, password } = request.all()
-
+    let hsh = await Hash.make(password)
     if (email == null || password == null) {
       return response.unauthorized({ message: 'Email atau Password Tidak Ada' })
     } else {
       const user = await User.findBy('email', email)
 
-      if (!(await Hash.verify(user.password, password))) {
+      if (user?.password != hsh) {
         return response.unauthorized({ message: 'Password salah' })
       } else {
         if (request.header('Authorization') == null) {
