@@ -5,8 +5,10 @@ import DtlBooking from 'App/Models/DtlBooking'
 import random from 'random-string-generator'
 import Paket from 'App/Models/Paket'
 import User from 'App/Models/User'
+import midtransClient from 'midtrans-client'
 import { DateTime } from 'luxon'
-
+import hash from 'js-sha512'
+import axios from 'axios'
 export default class BookingsController {
   public async getBooking(value) {
     let booking = await Database.from('bookings')
@@ -16,8 +18,9 @@ export default class BookingsController {
       .select('bookings.*', 'users.*', 'dtl_bookings.*', 'pakets.*')
 
     // make id, status, date, date1, date2 from value parameter
-    const { uid, id, status, date, date1, date2 } = value
+    const { uid, id, stat, status, date, date1, date2 } = value
 
+    console.log(value)
     if (id) {
       booking = await Database.from('bookings')
         .innerJoin('dtl_bookings', 'bookings.id', 'dtl_bookings.booking_id')
@@ -39,13 +42,15 @@ export default class BookingsController {
         .innerJoin('pakets', 'dtl_bookings.paket_id', 'pakets.id')
         .select('bookings.*', 'users.*', 'dtl_bookings.*', 'pakets.*')
         .where('bookings.check_in', date)
-    } else if (uid) {
+    } else if (uid && stat) {
       booking = await Database.from('bookings')
         .innerJoin('dtl_bookings', 'bookings.id', 'dtl_bookings.booking_id')
         .innerJoin('users', 'bookings.user_id', 'users.id')
         .innerJoin('pakets', 'dtl_bookings.paket_id', 'pakets.id')
         .select('bookings.*', 'users.*', 'dtl_bookings.*', 'pakets.*')
-        .where('bookings.user_id', uid)
+        .where('bookings.user_id', uid) // user id
+        .where('bookings.status_booking', stat) // status booking
+      console.log('uid & stat')
     } else if (date1 && date2) {
       booking = await Database.from('bookings')
         .innerJoin('dtl_bookings', 'bookings.id', 'dtl_bookings.booking_id')
@@ -53,7 +58,7 @@ export default class BookingsController {
         .innerJoin('pakets', 'dtl_bookings.paket_id', 'pakets.id')
         .select('bookings.*', 'users.*', 'dtl_bookings.*', 'pakets.*')
         .whereBetween('bookings.check_in', [date1, date2])
-    } else if (!id && !status && !date && !date1 && !date2) {
+    } else if (!id && !stat && !date && !date1 && !date2 && !uid && !status) {
       booking = await Database.from('bookings')
         .innerJoin('dtl_bookings', 'bookings.id', 'dtl_bookings.booking_id')
         .innerJoin('users', 'bookings.user_id', 'users.id')
@@ -67,10 +72,10 @@ export default class BookingsController {
         message: 'data not found / empty',
       }
     } else {
-      const merged = booking.reduce((acc: any, cur: any) => {
-        const found = acc.find((el: any) => el.kode_transaksi === cur.kode_transaksi)
-        if (found) {
-          found.dtl_booking.push({
+      const merged = booking.reduce((acc, cur) => {
+        const existingBooking = acc.find((el) => el.kode_booking === cur.kode_booking)
+        if (existingBooking) {
+          existingBooking.dtl_booking.push({
             paket_id: cur.paket_id,
             nama_paket: cur.nama_paket,
             jumlah_kamar: cur.jumlah_kamar,
@@ -79,7 +84,7 @@ export default class BookingsController {
             status_dtl_booking: cur.status_dtl_booking,
           })
         } else {
-          acc.push({
+          const newBooking = {
             id: cur.id,
             kode_booking: cur.kode_booking,
             ref: {
@@ -120,7 +125,8 @@ export default class BookingsController {
                 status_dtl_booking: cur.status_dtl_booking,
               },
             ],
-          })
+          }
+          acc.push(newBooking)
         }
         return acc
       }, [])
@@ -133,7 +139,9 @@ export default class BookingsController {
   }
   public async index({ response }: HttpContextContract) {
     let req = {
+      uid: null,
       id: null,
+      stat: null,
       status: null,
       date: null,
       date1: null,
@@ -227,8 +235,12 @@ export default class BookingsController {
         await dtlBooking.save()
       }
     })
-    if (booking.$isPersisted) {
-      return response.created({ status: 'success', message: 'booking berhasil dibuat' })
+    if (booking) {
+      return {
+        status: 'success',
+        message: 'data saved',
+        data: booking,
+      }
     }
   }
 
@@ -237,7 +249,7 @@ export default class BookingsController {
     let req = {
       uid: qs.uid,
       id: qs.id,
-      status: qs.status,
+      stat: qs.stat,
       date: qs.date,
       date1: qs.date1,
       date2: qs.date2,
@@ -320,8 +332,12 @@ export default class BookingsController {
         await dtlBooking.save()
       }
     })
-    if (booking.$isPersisted) {
-      return response.created({ status: 'success', message: 'booking berhasil diupdate' })
+    if (booking) {
+      return {
+        status: 'success',
+        message: 'data saved',
+        data: booking,
+      }
     }
   }
 
@@ -332,5 +348,115 @@ export default class BookingsController {
     await booking?.delete()
     await dtlBooking?.delete()
     return response.ok({ message: 'Data berhasil dihapus' })
+  }
+
+  public async getMidtrans({ request, response }: HttpContextContract) {
+    // get data from raw request
+    const rawRequest = request.raw()
+    const parsedJson = JSON.parse(rawRequest)
+
+    let snap = new midtransClient.Snap({
+      // Set to true if you want Production Environment (accept real transaction).
+      isProduction: false,
+      //change when production
+      serverKey: 'SB-Mid-server-UhPxg10BYDN2VawUAibflVwk',
+      clientKey: '	SB-Mid-client-cNrdDzqDmMCyoitJ',
+    })
+
+    await snap
+      .createTransaction(parsedJson)
+      .then((transaction) => {
+        // transaction token
+        return response.ok({ status: 'success', result: transaction })
+      })
+      .catch((error) => {
+        return response.badRequest({ status: 'error', result: error })
+      })
+
+    // axios({
+    //   // Below is the API URL endpoint
+    //   url: "https://app.sandbox.midtrans.com/snap/v1/transactions",
+    //   method: "post",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     Accept: "application/json",
+    //     Authorization:
+    //       "Basic " +
+    //       Buffer.from("SB-Mid-server-GwUP_WGbJPXsDzsNEBRs8IYA").toString("base64")
+    //     // Above is API server key for the Midtrans account, encoded to base64
+    //   },
+    //   data:
+    //     // Below is the HTTP request body in JSON
+    //     {
+    //       transaction_details: {
+    //         order_id: "order-csb-" + getCurrentTimestamp(),
+    //         gross_amount: 10000
+    //       },
+    //       credit_card: {
+    //         secure: true
+    //       },
+    //       customer_details: {
+    //         first_name: "Johny",
+    //         last_name: "Kane",
+    //         email: "testmidtrans@mailnesia.com",
+    //         phone: "08111222333"
+    //       }
+    //     }
+    // }).then( snapResponse => {
+    //   // Success, snapResponse contains response from API server
+    //   console.log("transaction token = " + snapResponse.data.token);
+    //   return response.ok({ status: 'success', result: snapResponse.data.token })
+    // }).catch( error => {
+    //   // Error, check `error` for more details
+    //   console.log("error = " + error);
+
+    //   })
+  }
+  public async callbackmidtrans({ request, response }: HttpContextContract) {
+    let serverkey = 'SB-Mid-server-UhPxg10BYDN2VawUAibflVwk'
+    // get data from raw request
+    const rawRequest = request.raw()
+    const parsedJson = JSON.parse(rawRequest)
+
+    let payload = parsedJson.order_id + parsedJson.status_code + parsedJson.gross_amount + serverkey
+    // hash payload to SHA512
+    let signatureKey = hash.sha512(payload)
+    if (signatureKey == parsedJson.signature_key) {
+      if (parsedJson.transaction_status == 'capture') {
+        const booking = await Booking.findBy('kode_booking', parsedJson.order_id)
+        booking.status_pembayaran = 'capture'
+        booking.res_midtrans = JSON.stringify(rawRequest)
+        await booking?.save()
+        return response.ok({ status: 'success', result: parsedJson })
+      } else if (parsedJson.transaction_status == 'settlement') {
+        const booking = await Booking.findBy('kode_booking', parsedJson.order_id)
+        booking.status_pembayaran = 'settlement'
+        booking.res_midtrans = JSON.stringify(rawRequest)
+        await booking?.save()
+        return response.ok({ status: 'success', result: parsedJson })
+      } else if (parsedJson.transaction_status == 'pending') {
+        const booking = await Booking.findBy('kode_booking', parsedJson.order_id)
+        booking.status_pembayaran = 'pending'
+        booking.res_midtrans = JSON.stringify(rawRequest)
+        await booking?.save()
+        return response.ok({ status: 'success', result: parsedJson })
+      } else if (parsedJson.transaction_status == 'deny') {
+        const booking = await Booking.findBy('kode_booking', parsedJson.order_id)
+        booking.status_pembayaran = 'deny'
+        booking.res_midtrans = JSON.stringify(rawRequest)
+        await booking?.save()
+        return response.ok({ status: 'success', result: parsedJson })
+      } else if (parsedJson.transaction_status == 'expire') {
+        const booking = await Booking.findBy('kode_booking', parsedJson.order_id)
+        booking.status_pembayaran = 'expire'
+        booking.res_midtrans = JSON.stringify(rawRequest)
+        await booking?.save()
+        return response.ok({ status: 'success', result: parsedJson })
+      } else {
+        return response.badRequest({ status: 'error', result: parsedJson })
+      }
+    } else {
+      return response.badRequest({ status: 'error | signature-key not same', result: parsedJson })
+    }
   }
 }

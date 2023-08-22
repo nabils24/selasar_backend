@@ -106,7 +106,11 @@ export default class UsersController {
 
       user.username = request.input('username')
       user.email = request.input('email')
-      user.password = await Hash.make(request.input('password'))
+      if(request.input('password')){
+        user.password = await Hash.make(request.input('password'))
+      }else{
+        user.password = user.password
+      }
       user.role = request.input('role')
       user.status_user = request.input('status_user')
       user.avatar = fileName

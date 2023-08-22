@@ -38,6 +38,9 @@ export default class Booking extends BaseModel {
   @column()
   public status_check_out: string
 
+  @column()
+  public res_midtrans: string
+
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime
 

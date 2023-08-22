@@ -28,10 +28,15 @@ export default class extends BaseSchema {
           'process',
           'deny',
           'refund',
+          'capture',
+          'expire',
+          'authorize',
+          'failure',
         ])
         .notNullable()
       table.enum('status_check_in', ['active', 'inactive']).notNullable()
       table.enum('status_check_out', ['active', 'inactive']).notNullable()
+      table.text('res_midtrans').nullable()
       table.dateTime('created_at', { useTz: true })
       table.dateTime('updated_at', { useTz: true })
     })
